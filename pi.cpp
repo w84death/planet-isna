@@ -34,9 +34,9 @@
 // SYSTEM SETTINGS
 // ----------------------------------------------------------------------------
 
-bool fullscreen_mode  = false;
+bool fullscreen_mode  = true;
 char win_title[]      = "PLANET ISNA";
-static float VERSION  = 0.1f;
+static float VERSION  = 0.3f;
 int win_width         = 800;
 int win_height        = 600;
 int win_x             = 50;
@@ -47,8 +47,8 @@ int win_y             = 80;
 
 int frames = 0;
 int cycles = 0;
-static int RENDER_FPS = 1000/30;
-static int LOGIC_FPS  = 1000/24;
+static int RENDER_FPS = 1000/48;
+static int LOGIC_FPS  = 1000/30;
 
 // CAMERA SETTINGS
 // ----------------------------------------------------------------------------
@@ -68,7 +68,9 @@ float cam_clear_color[4] = {0.3f, 0.05f, 0.6f, 1.0f};
 
 // PI SETTINGS
 // ----------------------------------------------------------------------------
-static int CELLS_ARRAY_SIZE[]     = {80, 36};
+static int AI_FPS                 = 1000/4;
+
+static int CELLS_ARRAY_SIZE[]     = {100, 46};
 static int CELLS_MAX              = CELLS_ARRAY_SIZE[0]*CELLS_ARRAY_SIZE[1];
 static int CELLS_HALF[]           = {CELLS_ARRAY_SIZE[0] * 0.5, CELLS_ARRAY_SIZE[1] * 0.5};
 static int LAYERS                 = 5;
@@ -76,18 +78,19 @@ static int GAME_LAYER             = 2;
 static int MISSILE_LAYER          = 3;
 static int HUD_LAYER              = 4;
 
-int pi_buffor[80][36][4];
-int pi_layers[5][80][36][5];
+int pi_buffor[100][46][4];
+int pi_layers[5][100][46][5];
 
 static int C_SPACE                = 0;
 static int C_STAR                 = 1;
 static int C_SHIP                 = 2;
 static int C_WEAPON               = 3;
-static int C_MISSILE              = 4;
-static int C_HUD                  = 5;
-static int C_EXPLOSION            = 6;
+static int C_BODY                 = 4;
+static int C_MISSILE              = 5;
+static int C_HUD                  = 6;
+static int C_EXPLOSION            = 7;
 
-static float C_STAR_0_DENS        = 0.05f;
+static float C_STAR_0_DENS        = 0.005f;
 static float C_STAR_1_DENS        = 0.01f;
 
 int STATE                         = 0;
@@ -126,7 +129,7 @@ static int HUD_LOGO_SIZE[2] = {3,5};
 
 //hlorotfortum wariagatum
 
-static int SPRITES[3][5][5][3] = {
+static int SPRITES[12][5][5][3] = {
   {
     {{21,15,0}, {2,4,0}, {28,4,0}, {2,4,0}, {22,15,0}},
     {{1,15,0}, {2,4,0}, {2,15,4}, {2,4,0},  {1,15,0}},
@@ -137,16 +140,23 @@ static int SPRITES[3][5][5][3] = {
   {
     {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}},
     {{0,0,0}, {0,0,0}, {1,1,0}, {0,0,0}, {0,0,0}},
-    {{0,0,0}, {2,1,0}, {15,0,1}, {2,1,0}, {0,0,0}},
-    {{0,0,0}, {0,0,0}, {2,1,0}, {0,0,0}, {0,0,0}},
+    {{0,0,0}, {29,1,0}, {2,0,1}, {29,1,0}, {0,0,0}},
+    {{0,0,0}, {0,0,0}, {16,1,0}, {0,0,0}, {0,0,0}},
     {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}}
   },
   {
     {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}},
-    {{0,0,0}, {0,0,0}, {2,1,0}, {0,0,0}, {0,0,0}},
-    {{1,1,0}, {2,1,0}, {15,0,1}, {2,1,0}, {1,1,0}},
-    {{0,0,0}, {0,0,0}, {2,1,0}, {0,0,0}, {0,0,0}},
+    {{0,0,0}, {0,0,0}, {29,1,0}, {0,0,0}, {0,0,0}},
+    {{1,1,0}, {2,1,0}, {2,0,1}, {2,1,0}, {1,1,0}},
+    {{0,0,0}, {16,1,0}, {29,1,0}, {16,1,0}, {0,0,0}},
     {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}}
+  },
+  {
+    {{0,0,0}, {0,0,0}, {1,1,0}, {0,0,0}, {0,0,0}},
+    {{0,0,0}, {29,1,0}, {29,1,0}, {29,1,0}, {0,0,0}},
+    {{2,1,0}, {2,1,0}, {2,0,1}, {2,1,0}, {2,1,0}},
+    {{2,1,0}, {29,1,0}, {29,1,0}, {29,1,0}, {2,1,0}},
+    {{0,0,0}, {2,1,0}, {2,1,0}, {2,1,0}, {0,0,0}}
   }};
 
 static int SPRITES_SIZE[2] = {5,5};
@@ -218,8 +228,8 @@ void pi_draw_hud_element(){
     sprite = HUD_LOGO[y][x];
     pi_layers[HUD_LAYER][x][y][0] = C_HUD;
     pi_layers[HUD_LAYER][x][y][1] = sprite;
-    pi_layers[HUD_LAYER][x][y][2] = 0;
-    pi_layers[HUD_LAYER][x][y][3] = 15;
+    pi_layers[HUD_LAYER][x][y][2] = 15;
+    pi_layers[HUD_LAYER][x][y][3] = 0;
 
   }}
 };
@@ -230,6 +240,7 @@ void pi_insert_entity(int id, int sprite_id, int start_x, int start_y){
   int colour_b;
   int px;
   int py;
+  int type = C_SHIP;
 
   for (int y = 0; y < SPRITES_SIZE[0]; y++){
   for (int x = 0; x < SPRITES_SIZE[1]; x++){
@@ -239,7 +250,10 @@ void pi_insert_entity(int id, int sprite_id, int start_x, int start_y){
     px = x+start_x;
     py = y+start_y;
     if (sprite > 0){
-      pi_layers[GAME_LAYER][px][py][0] = sprite == 1 ? C_WEAPON : C_SHIP;
+      type = C_SHIP;
+      if (sprite == 1) type = C_WEAPON;
+      if (sprite == 2) type = C_BODY;
+      pi_layers[GAME_LAYER][px][py][0] = type;
       pi_layers[GAME_LAYER][px][py][1] = sprite;
       pi_layers[GAME_LAYER][px][py][2] = colour_f;
       pi_layers[GAME_LAYER][px][py][3] = colour_b;
@@ -286,18 +300,21 @@ void pi_setup(){
 
   pi_draw_hud_element();
   pi_insert_entity(1, 0, 30, 4);
-  pi_insert_entity(2, 1, 10, 60);
-  pi_insert_entity(2, 1, 35, 58);
-  pi_insert_entity(2, 2, 66, 59);
+  pi_insert_entity(2, 1, 10, 80);
+  pi_insert_entity(3, 2, 35, 70);
+  pi_insert_entity(4, 3, 66, 77);
+  pi_insert_entity(5, 1, 15, 60);
 }
 
 void pi_draw_tile(int x, int y, char sprite, int colour_f, int colour_b){
+  
   if ( colour_b > 0) {
     glPushMatrix();
       // BACK
       glTranslatef (x*0.9f-0.1f, y*1.5f-0.3f, 0.0f);
-      glColorMaterial ( GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE ) ;
-      glEnable ( GL_COLOR_MATERIAL ) ;
+    glColorMaterial ( GL_FRONT, GL_AMBIENT_AND_DIFFUSE ) ;
+    glEnable ( GL_COLOR_MATERIAL ) ;
+
       glColor4f(COLOURS[colour_b][0], COLOURS[colour_b][1], COLOURS[colour_b][2], 1.0f);
 
       float size_x = 0.9f;
@@ -314,6 +331,7 @@ void pi_draw_tile(int x, int y, char sprite, int colour_f, int colour_b){
   }
   glPushMatrix();
     // FRONT
+    glEnable ( GL_COLOR_MATERIAL ) ;
     glColor4f(COLOURS[colour_f][0], COLOURS[colour_f][1], COLOURS[colour_f][2], 1.0f);
     glRasterPos2f(x*0.9f, y*1.5f);
     glutBitmapCharacter(GLUT_BITMAP_9_BY_15, sprite);
@@ -364,6 +382,33 @@ void pi_fill_buffor(){
   }}
 }
 
+ bool pi_check_ship(int id){
+  int cell_id;
+  int cell_type;
+  int parts = 0;
+
+  for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
+  for (int x = 0; x < CELLS_ARRAY_SIZE[0]; x++){
+    cell_type = pi_layers[GAME_LAYER][x][y][0];
+    cell_id = pi_layers[GAME_LAYER][x][y][4];
+    if(cell_type == C_BODY and cell_id == id){
+      parts++;
+    }
+  }}
+
+  if (parts == 0){
+    for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
+    for (int x = 0; x < CELLS_ARRAY_SIZE[0]; x++){
+      cell_id = pi_layers[GAME_LAYER][x][y][4];
+      if(cell_id == id){
+        pi_layers[GAME_LAYER][x][y][0] = C_SPACE;
+      }
+    }}
+    return false;
+  }
+  return true;
+}
+
 void pi_move_cell(int layer, int id, int x1, int y1, int x2, int y2){
   int cell_id;
   int cell_char;
@@ -385,12 +430,18 @@ void pi_move_cell(int layer, int id, int x1, int y1, int x2, int y2){
   }
 
   if (y2 >= 0 and y2 < CELLS_ARRAY_SIZE[1]){
-    if (pi_layers[layer][x2][y2][0] > C_SPACE){
-      pi_layers[layer][x2][y2][0] = C_EXPLOSION;
-      pi_layers[layer][x2][y2][1] = 43;
-      pi_layers[layer][x2][y2][2] = 16;
-      pi_layers[layer][x2][y2][3] = 0;
-      pi_layers[layer][x2][y2][4] = 0;
+    if (pi_layers[layer][x2][y2][0] > C_SPACE or (cell_type == C_MISSILE and pi_layers[GAME_LAYER][x2][y2][0] > C_SPACE)){
+      pi_layers[layer][x2][y2][0] = C_SPACE;
+      if(cell_type == C_MISSILE){
+        pi_layers[GAME_LAYER][x2][y2][0] = C_SPACE;
+        cell_id = pi_layers[GAME_LAYER][x2][y2][4];
+        pi_check_ship(cell_id);
+        pi_layers[GAME_LAYER][x2][y2][4] = 0;
+      }
+      pi_buffor[x2][y2][0] = C_EXPLOSION;
+      pi_buffor[x2][y2][1] = 43;
+      pi_buffor[x2][y2][2] = 16;
+      pi_buffor[x2][y2][3] = 0;
     }else{
       pi_layers[layer][x2][y2][0] = cell_type;
       pi_layers[layer][x2][y2][1] = cell_char;
@@ -505,6 +556,11 @@ void pi_shoot_bullet(int id){
   }}
 }
 
+void pi_ai(int id){
+  if(cycles % 2 == 0) pi_shoot_bullet(id);
+  if (random_f()<0.5f) pi_move_entitie(id, true, random_f() < 0.5f ? true : false);
+}
+
 void pi_draw(){
   pi_draw_buffor();
   frames++;
@@ -512,14 +568,20 @@ void pi_draw(){
 
 void pi_loop(){
 
-  if (cycles % 2 == 0) pi_automate(0);
+  if (cycles % 6 == 0 and cycles % 2 == 0) pi_automate(0);
   pi_automate(1);
   pi_automate(MISSILE_LAYER);
-
   pi_fill_buffor();
   cycles++;
 };
 
+void pi_ai_loop(){
+  pi_ai(2);
+  pi_ai(3);
+  pi_ai(4);
+  pi_ai(5);
+  pi_shoot_bullet(1);
+}
 
 
 
@@ -551,21 +613,7 @@ void special_keys(int key, int x, int y) {
         
         break;
       case GLUT_KEY_DOWN:
-        
         break;
-      case GLUT_KEY_F2:
-        
-        break;
-      case GLUT_KEY_F3:
-        cam_mode = 0;
-        break;
-      case GLUT_KEY_F4:
-        cam_mode = 1;
-        break;
-      case GLUT_KEY_F5:
-        cam_mode = 2;
-        break;
-
    }
 }
 
@@ -577,10 +625,9 @@ void keyboard(unsigned char key, int x, int y) {
       case 13: // enter
          break;
       case 113: // q
-        
+        pi_shoot_bullet(1);
         break;
       case 101: // e
-        pi_shoot_bullet(2);
         break;
       case 97: // a
 
@@ -735,6 +782,7 @@ void display() {
 
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glLoadIdentity();
+
   glScalef(11.0f, 11.0f, 1.0f);
   glTranslatef(1.0f, 1.0f, 0.0f);
 
@@ -756,6 +804,11 @@ void logic_loop(int value){
   glutTimerFunc(LOGIC_FPS, logic_loop, 0);
 }
 
+void ai_loop(int value){
+  pi_ai_loop();
+  glutTimerFunc(AI_FPS, ai_loop, 0);
+}
+
 int main(int argc, char** argv) {
   glutInit(&argc, argv);
   setup_app();
@@ -766,6 +819,7 @@ int main(int argc, char** argv) {
 
   glutTimerFunc(0, render_loop, 0);
   glutTimerFunc(0, logic_loop, 0);
+  glutTimerFunc(0, ai_loop, 0);
   glutMainLoop();
    return 0;
 }
