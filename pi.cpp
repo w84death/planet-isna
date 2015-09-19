@@ -68,19 +68,24 @@ float cam_clear_color[4] = {0.3f, 0.05f, 0.6f, 1.0f};
 
 // PI SETTINGS
 // ----------------------------------------------------------------------------
-static int CELLS_ARRAY_SIZE[]     = {80, 30};
+static int CELLS_ARRAY_SIZE[]     = {80, 36};
 static int CELLS_MAX              = CELLS_ARRAY_SIZE[0]*CELLS_ARRAY_SIZE[1];
 static int CELLS_HALF[]           = {CELLS_ARRAY_SIZE[0] * 0.5, CELLS_ARRAY_SIZE[1] * 0.5};
 static int LAYERS                 = 5;
+static int GAME_LAYER             = 2;
+static int MISSILE_LAYER          = 3;
+static int HUD_LAYER              = 4;
 
-int pi_buffor[80][30][4];
-int pi_layers[5][80][30][4];
+int pi_buffor[80][36][4];
+int pi_layers[5][80][36][5];
 
 static int C_SPACE                = 0;
-static int C_STAR                 = 2;
-static int C_SHIP                 = 4;
-static int C_MISSILE              = 8;
-static int C_HUD                  = 16;
+static int C_STAR                 = 1;
+static int C_SHIP                 = 2;
+static int C_WEAPON               = 3;
+static int C_MISSILE              = 4;
+static int C_HUD                  = 5;
+static int C_EXPLOSION            = 6;
 
 static float C_STAR_0_DENS        = 0.05f;
 static float C_STAR_1_DENS        = 0.01f;
@@ -91,11 +96,60 @@ static int S_MENU                 = 2;
 static int S_SIMULATION           = 4;
 static int S_CREDITS              = 8;
 
+static float COLOURS[16][3]        = {
+  // NORMAL
+  {0.0f,                0.0f,                 0.0f}, // black
+  {(float)170 / 255.0f, 0.0f,                    0.0f}, // red
+  {0.0f,                (float)170 / 255.0f,  0.0f}, // green
+  {(float)170 / 255.0f, (float)85 / 255.0f,   0.0f}, // brown
+  {0.0f,                0.0f,                 (float)170 / 255.0f}, // blue
+  {0.0f, 0.0f, 0.0f},
+  {0.0f, 0.0f, 0.0f},
+  {0.5f, 0.5f, 0.5f}, // gray
+  // LIGHT
+  {(float)85 / 255.0f, (float)85 / 255.0f, (float)85 / 255.0f}, // gray
+  {0.0f, 0.0f, 0.0f},
+  {0.0f, 0.0f, 0.0f},
+  {0.0f, 0.0f, 0.0f},
+  {0.0f, 0.0f, 0.0f},
+  {0.0f, 0.0f, 0.0f},
+  {0.0f, 0.0f, 0.0f},
+  {1.0f, 1.0f, 1.0f},
+};
 
+static int HUD_LOGO[3][5] = {
+  {2, 2, 2, 2, 2},
+  {2,80,49,88, 2},
+  {2, 2, 2, 2, 2}};
 
+static int HUD_LOGO_SIZE[2] = {3,5};
 
+//hlorotfortum wariagatum
 
+static int SPRITES[3][5][5][3] = {
+  {
+    {{21,15,0}, {2,4,0}, {28,4,0}, {2,4,0}, {22,15,0}},
+    {{1,15,0}, {2,4,0}, {2,15,4}, {2,4,0},  {1,15,0}},
+    {{0,0,0}, {13,15,0}, {2,15,4}, {12,15,0}, {0,0,0}},
+    {{0,0,0}, {0,0,0}, {2,15,4}, {0,0,0}, {0,0,0}},
+    {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}}
+  },
+  {
+    {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}},
+    {{0,0,0}, {0,0,0}, {1,1,0}, {0,0,0}, {0,0,0}},
+    {{0,0,0}, {2,1,0}, {15,0,1}, {2,1,0}, {0,0,0}},
+    {{0,0,0}, {0,0,0}, {2,1,0}, {0,0,0}, {0,0,0}},
+    {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}}
+  },
+  {
+    {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}},
+    {{0,0,0}, {0,0,0}, {2,1,0}, {0,0,0}, {0,0,0}},
+    {{1,1,0}, {2,1,0}, {15,0,1}, {2,1,0}, {1,1,0}},
+    {{0,0,0}, {0,0,0}, {2,1,0}, {0,0,0}, {0,0,0}},
+    {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}}
+  }};
 
+static int SPRITES_SIZE[2] = {5,5};
 
 // FUNCTIONS LIST
 // ----------------------------------------------------------------------------
@@ -154,9 +208,45 @@ float random_f(){
 
 
 
-// ARENA
+// ENGINE
 // ----------------------------------------------------------------------------
+void pi_draw_hud_element(){
+  int sprite;
 
+  for (int y = 0; y < HUD_LOGO_SIZE[0]; y++){
+  for (int x = 0; x < HUD_LOGO_SIZE[1]; x++){
+    sprite = HUD_LOGO[y][x];
+    pi_layers[HUD_LAYER][x][y][0] = C_HUD;
+    pi_layers[HUD_LAYER][x][y][1] = sprite;
+    pi_layers[HUD_LAYER][x][y][2] = 0;
+    pi_layers[HUD_LAYER][x][y][3] = 15;
+
+  }}
+};
+
+void pi_insert_entity(int id, int sprite_id, int start_x, int start_y){
+  int sprite;
+  int colour_f;
+  int colour_b;
+  int px;
+  int py;
+
+  for (int y = 0; y < SPRITES_SIZE[0]; y++){
+  for (int x = 0; x < SPRITES_SIZE[1]; x++){
+    sprite = SPRITES[sprite_id][y][x][0];
+    colour_f = SPRITES[sprite_id][y][x][1];
+    colour_b = SPRITES[sprite_id][y][x][2];
+    px = x+start_x;
+    py = y+start_y;
+    if (sprite > 0){
+      pi_layers[GAME_LAYER][px][py][0] = sprite == 1 ? C_WEAPON : C_SHIP;
+      pi_layers[GAME_LAYER][px][py][1] = sprite;
+      pi_layers[GAME_LAYER][px][py][2] = colour_f;
+      pi_layers[GAME_LAYER][px][py][3] = colour_b;
+      pi_layers[GAME_LAYER][px][py][4] = id;
+    }
+  }}
+};
 
 void pi_setup(){
   int r;
@@ -172,56 +262,78 @@ void pi_setup(){
         r = random_f() < C_STAR_0_DENS ? C_STAR : C_SPACE;
         pi_layers[b][x][y][0] = r;
         pi_layers[b][x][y][1] = 31;
+        pi_layers[b][x][y][2] = 8;
+
       }
       if (b==1){
         r = random_f() < C_STAR_1_DENS ? C_STAR : C_SPACE;
         pi_layers[b][x][y][0] = r;
         pi_layers[b][x][y][1] = 7;
+        pi_layers[b][x][y][2] = 7;
       }
+
       if (b>1){
         pi_layers[b][x][y][0] = C_SPACE;
         pi_layers[b][x][y][1] = 0;
+        pi_layers[b][x][y][2] = 0;
       }
-      pi_layers[b][x][y][2] = 15;
+
       pi_layers[b][x][y][3] = 0;
+      pi_layers[b][x][y][4] = 0;
+
     }
   }}
+
+  pi_draw_hud_element();
+  pi_insert_entity(1, 0, 30, 4);
+  pi_insert_entity(2, 1, 10, 60);
+  pi_insert_entity(2, 1, 35, 58);
+  pi_insert_entity(2, 2, 66, 59);
 }
 
-void pi_draw_tile(int x, int y, char sprite){
-  glPushMatrix();
+void pi_draw_tile(int x, int y, char sprite, int colour_f, int colour_b){
+  if ( colour_b > 0) {
+    glPushMatrix();
+      // BACK
+      glTranslatef (x*0.9f-0.1f, y*1.5f-0.3f, 0.0f);
+      glColorMaterial ( GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE ) ;
+      glEnable ( GL_COLOR_MATERIAL ) ;
+      glColor4f(COLOURS[colour_b][0], COLOURS[colour_b][1], COLOURS[colour_b][2], 1.0f);
 
-    // glTranslatef (x, y*2, 0.0f);
+      float size_x = 0.9f;
+      float size_y = 1.5f;
 
-    // glColorMaterial ( GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE ) ;
-    glEnable ( GL_COLOR_MATERIAL ) ;
-    glColor4f(0.7f, 0.7f, 1.0f, 1.0f);
+      glBegin(GL_POLYGON);
+         glVertex3d(0, size_y, 0.0f);
+         glVertex3d(0, 0, 0.0f);
+         glVertex3d(size_x, 0, 0.0f);
+         glVertex3d(size_x, size_y, 0.0f);
+      glEnd();
 
-    // float size = 0.5f;
-
-    // glBegin(GL_POLYGON);
-    //    glVertex3d(-size, size*2, 0.0f);
-    //    glVertex3d(-size, -size*2, 0.0f);
-    //    glVertex3d(size, -size*2, 0.0f);
-    //    glVertex3d(size, size*2, 0.0f);
-    // glEnd();
-
-    //GLUT_BITMAP_9_BY_15
-    glRasterPos2f(x*0.9, y*1.6);
-    glutBitmapCharacter(GLUT_BITMAP_9_BY_15, sprite);
     glPopMatrix();
+  }
+  glPushMatrix();
+    // FRONT
+    glColor4f(COLOURS[colour_f][0], COLOURS[colour_f][1], COLOURS[colour_f][2], 1.0f);
+    glRasterPos2f(x*0.9f, y*1.5f);
+    glutBitmapCharacter(GLUT_BITMAP_9_BY_15, sprite);
+  glPopMatrix();
 }
 
 void  pi_draw_buffor(){
   int cell_type;
   int cell_char;
+  int cell_colour_f;
+  int cell_colour_b;
 
   for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
   for (int x = 0; x < CELLS_ARRAY_SIZE[0]; x++){
     cell_type = pi_buffor[x][y][0];
+    cell_char = pi_buffor[x][y][1];
+    cell_colour_f = pi_buffor[x][y][2];
+    cell_colour_b = pi_buffor[x][y][3];
     if (cell_type > C_SPACE){
-      cell_char = pi_buffor[x][y][1];
-      pi_draw_tile(x, y, cell_char);
+      pi_draw_tile(x, y, cell_char, cell_colour_f, cell_colour_b);
     }
   }}
 }
@@ -235,14 +347,14 @@ void pi_fill_buffor(){
 
   for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
   for (int x = 0; x < CELLS_ARRAY_SIZE[0]; x++){
-     pi_buffor[x][y][0] = C_SPACE;
+    pi_buffor[x][y][0] = C_SPACE;
+    pi_buffor[x][y][3] = 0;
     for (int b = 0; b<LAYERS; b++){
       temp_type = pi_layers[b][x][y][0];
-      temp_char = pi_layers[b][x][y][1];
-      temp_color_f = pi_layers[b][x][y][2];
-      temp_color_b = pi_layers[b][x][y][3];
-
       if(temp_type > C_SPACE){
+        temp_char = pi_layers[b][x][y][1];
+        temp_color_f = pi_layers[b][x][y][2];
+        temp_color_b = pi_layers[b][x][y][3];
         pi_buffor[x][y][0] = temp_type;
         pi_buffor[x][y][1] = temp_char;
         pi_buffor[x][y][2] = temp_color_f;
@@ -252,11 +364,54 @@ void pi_fill_buffor(){
   }}
 }
 
+void pi_move_cell(int layer, int id, int x1, int y1, int x2, int y2){
+  int cell_id;
+  int cell_char;
+  int cell_type;
+  int cell_colour_f;
+  int cell_colour_b;
+
+  cell_type = pi_layers[layer][x1][y1][0];
+  cell_char = pi_layers[layer][x1][y1][1];
+  cell_colour_f = pi_layers[layer][x1][y1][2];
+  cell_colour_b = pi_layers[layer][x1][y1][3];
+
+  if (x2 >= CELLS_ARRAY_SIZE[0]){
+    x2 = 0;
+  }
+
+  if (x2 < 0){
+    x2 = CELLS_ARRAY_SIZE[0]-1;
+  }
+
+  if (y2 >= 0 and y2 < CELLS_ARRAY_SIZE[1]){
+    if (pi_layers[layer][x2][y2][0] > C_SPACE){
+      pi_layers[layer][x2][y2][0] = C_EXPLOSION;
+      pi_layers[layer][x2][y2][1] = 43;
+      pi_layers[layer][x2][y2][2] = 16;
+      pi_layers[layer][x2][y2][3] = 0;
+      pi_layers[layer][x2][y2][4] = 0;
+    }else{
+      pi_layers[layer][x2][y2][0] = cell_type;
+      pi_layers[layer][x2][y2][1] = cell_char;
+      pi_layers[layer][x2][y2][2] = cell_colour_f;
+      pi_layers[layer][x2][y2][3] = cell_colour_b;
+      pi_layers[layer][x2][y2][4] = id;
+    }
+  }
+
+  pi_layers[layer][x1][y1][0] = C_SPACE;
+  pi_layers[layer][x1][y1][4] = 0;
+}
 
 void pi_automate(int layer){
 
   int cell_type;
   int cell_char;
+  int cell_x;
+  int cell_id;
+
+  if (layer == HUD_LAYER) return;
 
   for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
   for (int x = 0; x < CELLS_ARRAY_SIZE[0]; x++){
@@ -266,18 +421,87 @@ void pi_automate(int layer){
 
     if (layer == 0 or layer == 1){
       if (cell_type == C_STAR) {
+        // clear old space
         pi_layers[layer][x][y][0] = C_SPACE;
         if(y>0){
+          // move cell one tile ahead
           pi_layers[layer][x][y-1][0] = cell_type;
           pi_layers[layer][x][y-1][1] = cell_char;
         }else{
-          pi_layers[layer][x][CELLS_ARRAY_SIZE[1]-1][0] = cell_type;
-          pi_layers[layer][x][CELLS_ARRAY_SIZE[1]-1][1] = cell_char;
+          // restart cell in the begining
+          cell_x = (int)(random_f()*CELLS_ARRAY_SIZE[0]);
+          pi_layers[layer][cell_x][CELLS_ARRAY_SIZE[1]-1][0] = cell_type;
+          pi_layers[layer][cell_x][CELLS_ARRAY_SIZE[1]-1][1] = cell_char;
         }
       }
     }
 
+    if (layer == MISSILE_LAYER and cell_type == C_MISSILE){
+      cell_id = pi_layers[layer][x][y][4]; 
+      if (cell_id > 1){
+        pi_move_cell(layer, cell_id, x, y, x, y-1);
+      }
+    }
+  }}
 
+  if (layer == MISSILE_LAYER){
+    for (int y = CELLS_ARRAY_SIZE[1]; y >= 0; --y){
+    for (int x = 0; x < CELLS_ARRAY_SIZE[0]; x++){
+      cell_id = pi_layers[layer][x][y][4]; 
+      if (cell_id == 1){
+        pi_move_cell(layer, cell_id, x, y, x, y+1);
+      }
+    }}
+  }
+}
+
+
+
+
+void pi_move_entitie(int id, bool vertical, bool change){
+  int cell_id;
+  int cell_type;
+
+  // RIGHT
+  if (vertical and change){
+    for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
+    for (int x = CELLS_ARRAY_SIZE[0]; x >= 0; --x){
+      cell_id = pi_layers[GAME_LAYER][x][y][4];
+      if (cell_id == id){
+        pi_move_cell(GAME_LAYER, id, x, y, x+1, y);
+      }
+    }}
+  }
+
+  // LEFT
+  if (vertical and !change){
+    for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
+    for (int x = 0; x < CELLS_ARRAY_SIZE[0]; x++){
+      cell_id = pi_layers[GAME_LAYER][x][y][4];
+      if (cell_id == id){
+        pi_move_cell(GAME_LAYER, id, x, y, x-1, y);
+      }
+    }}
+  }
+}
+
+void pi_shoot_bullet(int id){
+  int cell_type;
+  int cell_id;
+
+  for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
+  for (int x = 0; x < CELLS_ARRAY_SIZE[0]; x++){
+    cell_type = pi_layers[GAME_LAYER][x][y][0];
+    cell_id = pi_layers[GAME_LAYER][x][y][4];
+    if (cell_type == C_WEAPON and cell_id == id){
+
+      pi_layers[MISSILE_LAYER][x][y][0] = C_MISSILE;
+      pi_layers[MISSILE_LAYER][x][y][1] = 25;
+      pi_layers[MISSILE_LAYER][x][y][2] = 15;
+      pi_layers[MISSILE_LAYER][x][y][3] = 0;
+      pi_layers[MISSILE_LAYER][x][y][4] = id;
+
+    }
   }}
 }
 
@@ -290,6 +514,7 @@ void pi_loop(){
 
   if (cycles % 2 == 0) pi_automate(0);
   pi_automate(1);
+  pi_automate(MISSILE_LAYER);
 
   pi_fill_buffor();
   cycles++;
@@ -317,10 +542,10 @@ void special_keys(int key, int x, int y) {
          fullscreen_toggle();
          break;
       case GLUT_KEY_RIGHT:
-        
+        pi_move_entitie(1, true, true);
         break;
       case GLUT_KEY_LEFT:
-        
+        pi_move_entitie(1, true, false);
         break;
       case GLUT_KEY_UP:
         
@@ -352,10 +577,10 @@ void keyboard(unsigned char key, int x, int y) {
       case 13: // enter
          break;
       case 113: // q
-
+        
         break;
       case 101: // e
-
+        pi_shoot_bullet(2);
         break;
       case 97: // a
 
@@ -365,7 +590,7 @@ void keyboard(unsigned char key, int x, int y) {
         break;
 
       case 119: // w
-
+        pi_shoot_bullet(1);
         break;
       case 115: // s
 
@@ -391,8 +616,10 @@ void reshape(GLsizei width, GLsizei height) {
   glViewport(0, 0, width, height);
   glMatrixMode (GL_PROJECTION);
   glLoadIdentity ();
-  gluPerspective (FOV, (GLfloat)width/(GLfloat)height, 0.1f, 100.0f);
+  //gluPerspective (FOV, (GLfloat)width/(GLfloat)height, 0.1f, 100.0f);
+  gluOrtho2D(0.0, width, 0.0, height);
   glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
   glLoadIdentity();
 }
 
@@ -506,10 +733,10 @@ void setup_scene(){
 void display() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glLoadIdentity();
-  camera_move();
+  glScalef(11.0f, 11.0f, 1.0f);
+  glTranslatef(1.0f, 1.0f, 0.0f);
 
   if (STATE == S_SIMULATION){
     pi_draw();
