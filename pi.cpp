@@ -80,6 +80,7 @@ static int HUD_LAYER              = 4;
 
 int pi_buffor[100][46][4];
 int pi_layers[5][100][46][5];
+int eid  = 2;
 
 static int C_SPACE                = 0;
 static int C_STAR                 = 1;
@@ -148,8 +149,8 @@ static int SPRITES[12][5][5][3] = {
     {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}},
     {{0,0,0}, {0,0,0}, {29,1,0}, {0,0,0}, {0,0,0}},
     {{1,1,0}, {2,1,0}, {2,0,1}, {2,1,0}, {1,1,0}},
-    {{0,0,0}, {16,1,0}, {29,1,0}, {16,1,0}, {0,0,0}},
-    {{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0}}
+    {{16,1,0}, {16,1,0}, {29,1,0}, {16,1,0}, {16,1,0}},
+    {{0,0,0}, {16,1,0}, {29,1,0}, {16,1,0}, {0,0,0}}
   },
   {
     {{0,0,0}, {0,0,0}, {1,1,0}, {0,0,0}, {0,0,0}},
@@ -262,6 +263,17 @@ void pi_insert_entity(int id, int sprite_id, int start_x, int start_y){
   }}
 };
 
+void pi_spawn_enemy(){
+  int x = (int)(random_f()*80);
+  int y = (int)(random_f()*10);
+  int t = 1+(int)(random_f()*3);
+  pi_insert_entity(eid++, t, x, 75+y);
+}
+
+void pi_spawn_player(){
+  pi_insert_entity(1, 0, 45, 4);
+}
+
 void pi_setup(){
   int r;
   for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
@@ -299,11 +311,10 @@ void pi_setup(){
   }}
 
   pi_draw_hud_element();
-  pi_insert_entity(1, 0, 30, 4);
-  pi_insert_entity(2, 1, 10, 80);
-  pi_insert_entity(3, 2, 35, 70);
-  pi_insert_entity(4, 3, 66, 77);
-  pi_insert_entity(5, 1, 15, 60);
+  pi_spawn_player();
+  pi_spawn_enemy();
+  pi_spawn_enemy();
+  pi_spawn_enemy();
 }
 
 void pi_draw_tile(int x, int y, char sprite, int colour_f, int colour_b){
@@ -402,10 +413,20 @@ void pi_fill_buffor(){
       cell_id = pi_layers[GAME_LAYER][x][y][4];
       if(cell_id == id){
         pi_layers[GAME_LAYER][x][y][0] = C_SPACE;
+        pi_layers[GAME_LAYER][x][y][4] = 0;
       }
     }}
+    if (id==1){
+      pi_spawn_player();
+    }
+    if(id > 2) {
+      pi_spawn_enemy();
+
+      if (random_f() < 0.5f) pi_spawn_enemy();
+    }
     return false;
   }
+
   return true;
 }
 
@@ -576,10 +597,9 @@ void pi_loop(){
 };
 
 void pi_ai_loop(){
-  pi_ai(2);
-  pi_ai(3);
-  pi_ai(4);
-  pi_ai(5);
+  for (int i = 2; i < eid; i++){
+    pi_ai(i);
+  }
   pi_shoot_bullet(1);
 }
 
@@ -613,6 +633,9 @@ void special_keys(int key, int x, int y) {
         
         break;
       case GLUT_KEY_DOWN:
+        break;
+      case GLUT_KEY_F2:
+        pi_spawn_enemy();
         break;
    }
 }
