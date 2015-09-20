@@ -12,8 +12,21 @@ Whats so special?
  - armour cells
  - guns cells (they generates lasers cells when pressed "fire")
 
+# Charset
+![GLUT charset](http://openglut.sourceforge.net/openglut_bitmap_9by15.png)
+Hot tip: there's a SPRITE array that defins ships construction.
+- each cell has 3 params {char_id, forground_color, background_color}
+- chart id from [GLUT charset](http://openglut.sourceforge.net/openglut_bitmap_9by15.png)
+- some are restricted to:
+ - type 1 is a weapon
+ - type 2 is a body (important bits!)
+ - any other is armour (or cosmetic stuff)
 
-## how to compile
+## Media
+Video: [https://youtu.be/YsIRFvRxoEs](https://youtu.be/YsIRFvRxoEs)
+
+
+## How to compile
 
 ### Linux:
 ``gcc -Os pi.cpp -o pi-linux.app -lglut -lGL -lGLU -lm``
