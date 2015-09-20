@@ -24,7 +24,7 @@ OpenGL Glut doesnt have all the ANSI chars. It only support few simple character
 
 ![GLUT charset](http://openglut.sourceforge.net/openglut_bitmap_9by15.png)
 
-Each ship is made of chars that defines its construction. SPRITE array that defines each ship.
+Each ship is made of chars that defines its construction. Thers is an array that defines all the ships, pice by pice.
 
 ![Chip](https://i.imgur.com/mD2FZuq.png)
 
