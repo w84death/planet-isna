@@ -14,7 +14,12 @@ Whats so special?
 
 # Charset
 ![GLUT charset](http://openglut.sourceforge.net/openglut_bitmap_9by15.png)
-Hot tip: there's a SPRITE array that defins ships construction.
+
+Each ship is made of chars that defines its construction. SPRITE array that defines each ship.
+
+![Chip](https://i.imgur.com/mD2FZuq.png)
+
+You can easly edit it:
 - each cell has 3 params {char_id, forground_color, background_color}
 - chart id from [GLUT charset](http://openglut.sourceforge.net/openglut_bitmap_9by15.png)
 - some are restricted to:
