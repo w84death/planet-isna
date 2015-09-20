@@ -3,7 +3,7 @@
 
 Experimental text-mode ANSI space shooter
 
-## Watch the video: [https://youtu.be/YsIRFvRxoEs](https://youtu.be/YsIRFvRxoEs)
+## Watch the video: [https://youtu.be/f3qq_6dWxcA](https://youtu.be/f3qq_6dWxcA)
 
 Whats so special?
 
