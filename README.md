@@ -3,6 +3,8 @@
 
 Experimental text-mode ANSI space shooter
 
+## Watch the video: [https://youtu.be/YsIRFvRxoEs](https://youtu.be/YsIRFvRxoEs)
+
 Whats so special?
 
 - all done using text chars
@@ -26,9 +28,6 @@ You can easly edit it:
  - type 1 is a weapon
  - type 2 is a body (important bits!)
  - any other is armour (or cosmetic stuff)
-
-## Media
-Video: [https://youtu.be/YsIRFvRxoEs](https://youtu.be/YsIRFvRxoEs)
 
 
 ## How to compile
