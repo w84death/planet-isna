@@ -14,7 +14,14 @@ Whats so special?
  - armour cells
  - guns cells (they generates lasers cells when pressed "fire")
 
+## Concept art
+It all started as an ANSI art done in [PableDraw](http://picoe.ca/products/pablodraw/)
+
+![concept art](https://i.imgur.com/uKBKky7.png)
+
 # Charset
+OpenGL Glut doesnt have all the ANSI chars. It only support few simple characters. For now I'm using them but in the end I probably switch to the sprite rendering my own font (copy of DOS ANSI).
+
 ![GLUT charset](http://openglut.sourceforge.net/openglut_bitmap_9by15.png)
 
 Each ship is made of chars that defines its construction. SPRITE array that defines each ship.
