@@ -36,7 +36,7 @@
 
 bool fullscreen_mode  = true;
 char win_title[]      = "PLANET ISNA";
-static float VERSION  = 0.3f;
+static float VERSION  = 0.5f;
 int win_width         = 800;
 int win_height        = 600;
 int win_x             = 50;
@@ -80,7 +80,9 @@ static int HUD_LAYER              = 4;
 
 int pi_buffor[100][46][4];
 int pi_layers[5][100][46][5];
-int eid  = 2;
+int eid                           = 2;
+int level                         = 1;
+int enemy_count                = 0;
 
 static int C_SPACE                = 0;
 static int C_STAR                 = 1;
@@ -182,6 +184,8 @@ void special_keys();
 
 
 
+void pi_next_level();
+void pi_restart_game();
 
 
 
@@ -231,9 +235,47 @@ void pi_draw_hud_element(){
     pi_layers[HUD_LAYER][x][y][1] = sprite;
     pi_layers[HUD_LAYER][x][y][2] = 15;
     pi_layers[HUD_LAYER][x][y][3] = 0;
-
   }}
 };
+
+void pi_update_hud(){
+  int top = CELLS_ARRAY_SIZE[1] - 1;
+
+  pi_layers[HUD_LAYER][0][top][0] = C_HUD;
+  pi_layers[HUD_LAYER][0][top][1] = (5*16)-4;
+  pi_layers[HUD_LAYER][0][top][2] = 15;
+  pi_layers[HUD_LAYER][0][top][3] = 0;
+
+  pi_layers[HUD_LAYER][1][top][0] = C_HUD;
+  pi_layers[HUD_LAYER][1][top][1] = (3*16)+level;
+  pi_layers[HUD_LAYER][1][top][2] = 15;
+  pi_layers[HUD_LAYER][1][top][3] = 0;
+
+
+  pi_layers[HUD_LAYER][5][top][0] = C_HUD;
+  pi_layers[HUD_LAYER][5][top][1] = 2;
+  pi_layers[HUD_LAYER][5][top][2] = 15;
+  pi_layers[HUD_LAYER][5][top][3] = 0;
+
+  int ec1 = enemy_count;
+  int ec2 = 0;
+  if(enemy_count > 9){
+    ec1 = enemy_count  % 10;
+    ec2 = (enemy_count - ec1) / 10;
+  }
+  if(enemy_count>99){
+    ec1 = 9;
+    ec2 = 9;
+  }
+  pi_layers[HUD_LAYER][6][top][0] = C_HUD;
+  pi_layers[HUD_LAYER][6][top][1] = (3*16)+ec2;
+  pi_layers[HUD_LAYER][6][top][2] = 15;
+  pi_layers[HUD_LAYER][6][top][3] = 0;
+  pi_layers[HUD_LAYER][7][top][0] = C_HUD;
+  pi_layers[HUD_LAYER][7][top][1] = (3*16)+ec1;
+  pi_layers[HUD_LAYER][7][top][2] = 15;
+  pi_layers[HUD_LAYER][7][top][3] = 0;
+}
 
 void pi_insert_entity(int id, int sprite_id, int start_x, int start_y){
   int sprite;
@@ -263,15 +305,62 @@ void pi_insert_entity(int id, int sprite_id, int start_x, int start_y){
   }}
 };
 
+void pi_count_enemy(){
+  int cell_id;
+  int cell_type;
+  int count = 0;
+  for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
+  for (int x = 0; x < CELLS_ARRAY_SIZE[0]; x++){
+    cell_type = pi_layers[GAME_LAYER][x][y][0];
+    cell_id = pi_layers[GAME_LAYER][x][y][4];
+
+    if(cell_id > 1 and cell_type == C_BODY){
+      count++;
+    }
+  }}
+  enemy_count = count;
+}
+
 void pi_spawn_enemy(){
   int x = (int)(random_f()*80);
   int y = (int)(random_f()*10);
-  int t = 1+(int)(random_f()*3);
+  int t = level < 4 ? level : 3;
   pi_insert_entity(eid++, t, x, 75+y);
+  pi_count_enemy();
+  pi_update_hud();
+}
+
+void pi_eliminate_enemy(int id){
+  int cell_id;
+  for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
+  for (int x = 0; x < CELLS_ARRAY_SIZE[0]; x++){
+    cell_id = pi_layers[GAME_LAYER][x][y][4];
+    if(cell_id == id){
+      pi_layers[GAME_LAYER][x][y][0] = C_SPACE;
+      pi_layers[GAME_LAYER][x][y][4] = 0;
+    }
+  }}
+  if (id==1){
+    pi_restart_game();
+  }
+  if(id >= 2) {
+    pi_count_enemy();
+    pi_next_level();
+  }
+  pi_update_hud();
 }
 
 void pi_spawn_player(){
   pi_insert_entity(1, 0, 45, 4);
+}
+
+void pi_next_level(){
+  if(enemy_count < 1){
+    level++;
+    for (int i = 1; i <= level; i++){
+      pi_spawn_enemy();
+    }
+  }
 }
 
 void pi_setup(){
@@ -311,10 +400,15 @@ void pi_setup(){
   }}
 
   pi_draw_hud_element();
+  pi_update_hud();
   pi_spawn_player();
   pi_spawn_enemy();
-  pi_spawn_enemy();
-  pi_spawn_enemy();
+}
+
+void pi_restart_game(){
+  level = 1;
+  enemy_count = 0;
+  pi_setup();
 }
 
 void pi_draw_tile(int x, int y, char sprite, int colour_f, int colour_b){
@@ -393,7 +487,7 @@ void pi_fill_buffor(){
   }}
 }
 
- bool pi_check_ship(int id){
+bool pi_check_ship(int id){
   int cell_id;
   int cell_type;
   int parts = 0;
@@ -408,22 +502,7 @@ void pi_fill_buffor(){
   }}
 
   if (parts == 0){
-    for (int y = 0; y < CELLS_ARRAY_SIZE[1]; y++){
-    for (int x = 0; x < CELLS_ARRAY_SIZE[0]; x++){
-      cell_id = pi_layers[GAME_LAYER][x][y][4];
-      if(cell_id == id){
-        pi_layers[GAME_LAYER][x][y][0] = C_SPACE;
-        pi_layers[GAME_LAYER][x][y][4] = 0;
-      }
-    }}
-    if (id==1){
-      pi_spawn_player();
-    }
-    if(id > 2) {
-      pi_spawn_enemy();
-
-      if (random_f() < 0.5f) pi_spawn_enemy();
-    }
+    pi_eliminate_enemy(id);
     return false;
   }
 
@@ -458,6 +537,8 @@ void pi_move_cell(int layer, int id, int x1, int y1, int x2, int y2){
         cell_id = pi_layers[GAME_LAYER][x2][y2][4];
         pi_check_ship(cell_id);
         pi_layers[GAME_LAYER][x2][y2][4] = 0;
+        pi_count_enemy();
+        pi_update_hud();
       }
       pi_buffor[x2][y2][0] = C_EXPLOSION;
       pi_buffor[x2][y2][1] = 43;
@@ -636,6 +717,10 @@ void special_keys(int key, int x, int y) {
         break;
       case GLUT_KEY_F2:
         pi_spawn_enemy();
+        break;
+
+      case GLUT_KEY_F3:
+        pi_spawn_player();
         break;
    }
 }
