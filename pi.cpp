@@ -716,10 +716,10 @@ void special_keys(int key, int x, int y) {
       case GLUT_KEY_DOWN:
         break;
       case GLUT_KEY_F2:
-        pi_spawn_enemy();
+        pi_restart_game();
         break;
 
-      case GLUT_KEY_F3:
+      case GLUT_KEY_F7:
         pi_spawn_player();
         break;
    }
