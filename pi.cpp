@@ -659,7 +659,7 @@ void pi_shoot_bullet(int id){
 }
 
 void pi_ai(int id){
-  if(cycles % 2 == 0) pi_shoot_bullet(id);
+  if(cycles % 10 == 0 or cycles % 3 == 0) pi_shoot_bullet(id);
   if (random_f()<0.5f) pi_move_entitie(id, true, random_f() < 0.5f ? true : false);
 }
 
